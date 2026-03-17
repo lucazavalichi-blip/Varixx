@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVRIX Elite</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;900&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+body{margin:0;font-family:'Montserrat',sans-serif;background:#030303;color:white;overflow-x:hidden}
+header{display:flex;justify-content:space-between;padding:20px 40px;position:fixed;width:100%;background:rgba(0,0,0,.95);z-index:1000;backdrop-filter:blur(8px)}
+.logo{font-weight:900;font-size:28px;letter-spacing:5px;animation:fadeInDown 1s forwards}
+nav a{margin:0 10px;color:white;text-decoration:none;position:relative}
+nav a::after{content:'';position:absolute;width:0;height:2px;background:white;bottom:-5px;left:0;transition:.3s}
+nav a:hover::after{width:100%}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
+.hero{height:90vh;display:flex;justify-content:center;align-items:center;text-align:center;background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.2)),url('https://images.unsplash.com/photo-1520975916090-3105956dac38') center/cover;position:relative;overflow:hidden}
+.hero h1{font-size:90px;letter-spacing:6px;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.4);animation:heroText 2s ease-in-out infinite alternate}
+@keyframes heroText{0%{opacity:0.8;transform:translateY(0)}100%{opacity:1;transform:translateY(-10px)}}
+.timer{font-size:22px;margin-top:20px;color:#ff0000;animation:pulse 1.5s infinite}
+@keyframes pulse{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
+.section{padding:120px 40px}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:30px}
+.card{background:#0f0f0f;border-radius:20px;overflow:hidden;transition:.4s;cursor:pointer;opacity:0;transform:translateY(30px)}
+.card.visible{opacity:1;transform:translateY(0)}
+.card:hover{transform:scale(1.1)}
+.card img{width:100%;height:300px;object-fit:cover;transition:.5s}
+.card img:hover{transform:scale(1.05)}
+.card h3,.card p{padding:10px}
+.btn{margin:10px;padding:12px;border:none;background:white;color:black;border-radius:10px;cursor:pointer;transition:.3s}
+.btn:hover{transform:scale(1.05)}
+.cart{position:fixed;right:0;top:0;width:340px;height:100%;background:#000;padding:20px;transform:translateX(100%);transition:.5s;z-index:2000;overflow-y:auto}
+.cart.active{transform:translateX(0)}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.95);display:none;justify-content:center;align-items:center;z-index:3000;animation:fadeIn 0.5s}
+.modal.active{display:flex}
+.modal-content{background:#111;padding:25px;border-radius:20px;width:340px;animation:popIn 0.4s forwards;text-align:center}
+@keyframes popIn{0%{transform:scale(0.7);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes fadeIn{0%{opacity:0}100%{opacity:1}}
+select{width:100%;padding:10px;margin:10px 0;background:#000;color:white;border:1px solid #333}
+.checkout{margin-top:20px;padding:15px;background:white;color:black;text-align:center;border-radius:10px;cursor:pointer;transition:.3s}
+.checkout:hover{transform:scale(1.05)}
+@media(max-width:768px){.hero h1{font-size:50px}.products{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}}
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">AVRIX</div>
+<div onclick="toggleCart()" style="cursor:pointer">Cart 🛒</div>
+</header>
+
+<section class="hero">
+<div>
+<h1>DROP 004 - PHANTOM COLLECTION</h1>
+<div class="timer" id="timer"></div>
+</div>
+</section>
+
+<section class="section">
+<h2>LIMITED COLLECTION</h2>
+<div class="products" id="products"></div>
+</section>
+
+<div class="cart" id="cart">
+<h2>Your Cart</h2>
+<div id="cartItems"></div>
+<button class="checkout" onclick="checkout()">Secure Checkout</button>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3 id="modalTitle"></h3>
+<p id="modalPrice"></p>
+<select id="size"><option>S</option><option>M</option><option>L</option><option>XL</option></select>
+<button class="btn" onclick="addToCart()">Add to Cart</button>
+</div>
+</div>
+
+<script>
+const products=[
+{name:"AVRIX Phantom Hoodie",price:95,stock:5,img:"https://images.unsplash.com/photo-1521334884684-d80222895322"},
+{name:"AVRIX Ghost Puffer",price:170,stock:3,img:"https://images.unsplash.com/photo-1520975661595-6453be3f7070"},
+{name:"AVRIX Elite Tracksuit",price:130,stock:4,img:"https://images.unsplash.com/photo-1503342217505-b0a15ec3261c"},
+{name:"AVRIX Shadow Tee",price:50,stock:7,img:"https://images.unsplash.com/photo-1585386959984-a4155226a8e0"},
+{name:"AVRIX Tactical Cargo",price:80,stock:6,img:"https://images.unsplash.com/photo-1514996937319-344454492b37"},
+{name:"AVRIX Beanie Black",price:30,stock:10,img:"https://images.unsplash.com/photo-1517841905240-472988babdf9"},
+{name:"AVRIX Oversized Hoodie",price:105,stock:5,img:"https://images.unsplash.com/photo-1520975449474-6cfe4cfed9e6"},
+{name:"AVRIX Street Shorts",price:60,stock:8,img:"https://images.unsplash.com/photo-1520975613033-3541e91c67b4"},
+{name:"AVRIX Classic Cap",price:35,stock:12,img:"https://images.unsplash.com/photo-1520976000000-8e2eac8f3f24"}
+];
+
+const container=document.getElementById('products');
+products.forEach((p,i)=>{
+let div=document.createElement('div');
+div.className='card';
+div.innerHTML=`<img src='${p.img}'><h3>${p.name}</h3><p>€${p.price}</p><p>Stock: ${p.stock}</p>`;
+div.onclick=()=>openModal(i);
+container.appendChild(div);
+});
+
+// Animate cards on scroll
+const cards=document.querySelectorAll('.card');
+window.addEventListener('scroll',()=>{
+cards.forEach(c=>{
+let top=c.getBoundingClientRect().top;
+if(top<window.innerHeight-50)c.classList.add('visible');
+});
+});
+
+let currentProduct=null;
+function openModal(i){
+currentProduct=products[i];
+document.getElementById('modal').classList.add('active');
+document.getElementById('modalTitle').innerText=currentProduct.name;
+document.getElementById('modalPrice').innerText='€'+currentProduct.price;
+}
+
+let cart=[];
+function addToCart(){
+if(currentProduct.stock<=0){alert('Sold Out');return}
+currentProduct.stock--;
+const size=document.getElementById('size').value;
+cart.push({...currentProduct,size});
+renderCart();
+document.getElementById('modal').classList.remove('active');
+}
+
+function renderCart(){
+const el=document.getElementById('cartItems');
+let total=0;el.innerHTML='';
+cart.forEach(item=>{total+=item.price;el.innerHTML+=`<p>${item.name} (${item.size}) - €${item.price}</p>`});
+el.innerHTML+=`<hr><p>Total: €${total}</p>`;
+}
+
+function toggleCart(){document.getElementById('cart').classList.toggle('active')}
+
+function checkout(){
+alert('To activate real payments, connect Stripe backend.');
+}
+
+// Countdown timer
+let end=new Date().getTime()+86400000;
+setInterval(()=>{
+let now=new Date().getTime();
+let d=end-now;
+let h=Math.floor((d%(1000*60*60*24))/(1000*60*60));
+let m=Math.floor((d%(1000*60*60))/(1000*60));
+let s=Math.floor((d%(1000*60))/1000);
+document.getElementById('timer').innerText=`Drop ends in ${h}h ${m}m ${s}s`;
+},1000);
+
+window.onclick=e=>{if(e.target.id==='modal')document.getElementById('modal').classList.remove('active')}
+</script>
+
+</body>
+</html>
